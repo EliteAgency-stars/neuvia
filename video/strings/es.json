@@ -1,0 +1,67 @@
+{
+  "assistant": "ASISTENTE IA",
+  "answer": "El informe es correcto. Sin riesgos.",
+  "confidence": "{n}% DE CONFIANZA",
+  "glitch": {
+    "phrase": 1,
+    "offset": 0.6
+  },
+  "hook": [
+    {
+      "text": "La IA que implementaron en tu negocio",
+      "size": 96,
+      "y": 900,
+      "font": "G7",
+      "color": "#FFFFFF",
+      "hl": {
+        "negocio": "#FFFFFF"
+      }
+    },
+    {
+      "text": "te está mintiendo",
+      "size": 112,
+      "y": 1270,
+      "font": "G7",
+      "color": "#FFFFFF",
+      "hl": {
+        "mintiendo": "#FF5A3C"
+      }
+    },
+    {
+      "text": "en silencio.",
+      "size": 72,
+      "y": 1420,
+      "font": "G5",
+      "color": "rgba(255,255,255,0.72)",
+      "whisper": true
+    }
+  ],
+  "problem": "Cada día, la IA falla sin avisar.",
+  "problemHl": {
+    "avisar": "#FF5A3C"
+  },
+  "tags": [
+    "ALUCINACIONES",
+    "DERIVA",
+    "FALSA CERTEZA"
+  ],
+  "solution": "NEUVIA está creando una segunda inteligencia",
+  "solutionHl": {
+    "NEUVIA": "#00785A",
+    "segunda": "#00785A",
+    "inteligencia": "#00785A"
+  },
+  "steps": [
+    "Vigila",
+    "Detecta",
+    "Ayuda a corregir"
+  ],
+  "layer": "NEUVIA · CAPA DE FIABILIDAD COGNITIVA",
+  "tagline": "Inteligencia que cuida de la inteligencia.",
+  "taglineHl": {
+    "cuida": "#00785A"
+  },
+  "ctaPre": "Responde a este video con",
+  "ctaPost": "para saber más",
+  "disclaimer": "Iniciativa de investigación y desarrollo · visuales ilustrativos"
+}

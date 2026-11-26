@@ -1,0 +1,23 @@
+{
+  "assistant": "AI ASSISTANT",
+  "answer": "The report is accurate. No risks found.",
+  "confidence": "{n}% CONFIDENT",
+  "glitch": { "phrase": 0, "offset": 0.45 },
+  "hook": [
+    { "text": "Your AI just lied to you.", "size": 112, "y": 1000, "font": "G7", "color": "#FFFFFF", "hl": { "lied": "#FF5A3C" } },
+    { "text": "Confidently.", "size": 88, "y": 1280, "font": "G6", "color": "rgba(255,255,255,0.9)", "fixed": 0.3 },
+    { "text": "And nobody noticed.", "size": 64, "y": 1420, "font": "G5", "color": "rgba(255,255,255,0.7)", "whisper": true }
+  ],
+  "problem": "Every day, AI fails in silence.",
+  "problemHl": { "silence": "#FF5A3C" },
+  "tags": ["HALLUCINATIONS", "DRIFT", "FALSE CERTAINTY"],
+  "solution": "NEUVIA is building a second intelligence",
+  "solutionHl": { "NEUVIA": "#00785A", "second": "#00785A", "intelligence": "#00785A" },
+  "steps": ["Watches", "Detects", "Helps correct"],
+  "layer": "NEUVIA · COGNITIVE RELIABILITY LAYER",
+  "tagline": "Intelligence caring for intelligence.",
+  "taglineHl": { "caring": "#00785A" },
+  "ctaPre": "Reply to this video with",
+  "ctaPost": "to learn more",
+  "disclaimer": "Research & development initiative · visuals are illustrative"
+}

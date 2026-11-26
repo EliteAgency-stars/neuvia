@@ -2,7 +2,7 @@
 """Voiceover retiming + synced sound design for the NEUVIA promo.
 
 Usage: python3 video/audio.py <voiceover.mp3> [--tempo 1.075] [--merge 3]
-- Detects pauses, shortens them, applies tempo and writes build/vo_final.wav + build/timing.json.
+- Detects pauses, shortens them, applies tempo and writes build/vo_final-<lang>.wav + build/timing-<lang>.json.
 - The renderer expects 7 phrases (hook x3, problem, NEUVIA, tagline, CTA). If the voice produces an
   extra pause inside one phrase, pass its segment index with --merge (index of the first part).
 - Then synthesizes music/SFX aligned to those phrases, ducks it under the voice and masters to -14 LUFS.
@@ -10,8 +10,10 @@ Usage: python3 video/audio.py <voiceover.mp3> [--tempo 1.075] [--merge 3]
 import argparse, json, re, subprocess, numpy as np, os
 SR = 48000
 HERE = os.path.dirname(os.path.abspath(__file__)); B = os.path.join(HERE, 'build'); os.makedirs(B, exist_ok=True)
-ap = argparse.ArgumentParser(); ap.add_argument('vo'); ap.add_argument('--tempo', type=float, default=1.075)
-ap.add_argument('--merge', type=int, nargs='*', default=[3]); ap.add_argument('--lead', type=float, default=0.25); ap.add_argument('--max', type=float, default=20.0)
+ap = argparse.ArgumentParser(); ap.add_argument('vo'); ap.add_argument('--lang', default='en')
+ap.add_argument('--tempo', type=float, default=0, help='0 = automatic (fit --max)')
+ap.add_argument('--groups', default='1,1,1,2,1,1,1', help='voice segments per phrase (7 phrases)')
+ap.add_argument('--lead', type=float, default=0.25); ap.add_argument('--max', type=float, default=20.0)
 A = ap.parse_args()
 
 def load(path, ch=1):
@@ -26,24 +28,29 @@ gaps = [(a, b) for a, b in zip(st, en) if a > 0.05]
 segs, prev = [], 0.0
 for a, b in gaps: segs.append((prev, a)); prev = b
 segs.append((prev, len(x) / SR))
+groups = [int(g) for g in A.groups.split(',')]
+assert sum(groups) == len(segs), f'voice has {len(segs)} segments (gaps at {[round(a,2) for a,_ in gaps]}); --groups sums to {sum(groups)}'
+INTERNAL, k0 = set(), 0
+for g in groups:
+    INTERNAL.update(range(k0, k0 + g - 1)); k0 += g
 out, times, cur = [], [], 0.0
 for i, (a, b) in enumerate(segs):
     s = x[int(a * SR):int(b * SR)]; times.append((cur, cur + len(s) / SR)); out.append(s); cur += len(s) / SR
     if i < len(gaps):
-        keep = 0.40 if i == 0 else 0.15 if (i in A.merge) else 0.28
+        keep = 0.15 if i in INTERNAL else (0.40 if i == 0 else 0.28)
         g = x[int(gaps[i][0] * SR):int(gaps[i][0] * SR) + int(keep * SR)]; out.append(g); cur += len(g) / SR
 y = np.concatenate(out); thr = 10 ** (-45 / 20); idx = np.where(np.abs(y) > thr)[0]; y = y[:idx[-1] + int(0.12 * SR)]
 y.astype(np.float32).tofile(os.path.join(B, 'vo_tight.f32'))
-subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'f32le', '-ar', str(SR), '-ac', '1', '-i', os.path.join(B, 'vo_tight.f32'), '-af', f'atempo={A.tempo}', '-ar', str(SR), os.path.join(B, 'vo_final.wav')], check=True)
-phr, i = [], 0
-while i < len(times):
-    if i in A.merge and i + 1 < len(times): phr.append((times[i][0], times[i + 1][1])); i += 2
-    else: phr.append(times[i]); i += 1
-assert len(phr) == 7, f'expected 7 phrases, got {len(phr)} — adjust --merge'
-timing = [{'s': round(A.lead + a / A.tempo, 3), 'e': round(A.lead + b / A.tempo, 3)} for a, b in phr]
-vo = load(os.path.join(B, 'vo_final.wav')); D = round(min(A.max, A.lead + len(vo) / SR + 0.35), 2)
-json.dump({'timing': timing, 'duration': D, 'lead': A.lead, 'vo': len(vo) / SR}, open(os.path.join(B, 'timing.json'), 'w'), indent=1)
-print('VO', round(len(vo) / SR, 2), 's · video', D, 's')
+tempo = A.tempo or max(1.0, (len(y) / SR) / (A.max - A.lead - 0.35))
+if tempo > 1.15: print(f'WARNING: tempo {tempo:.3f} — script is too long for {A.max}s')
+VOF = os.path.join(B, f'vo_final-{A.lang}.wav')
+subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'f32le', '-ar', str(SR), '-ac', '1', '-i', os.path.join(B, 'vo_tight.f32'), '-af', f'atempo={tempo:.4f}', '-ar', str(SR), VOF], check=True)
+phr, k0 = [], 0
+for g in groups: phr.append((times[k0][0], times[k0 + g - 1][1])); k0 += g
+timing = [{'s': round(A.lead + a / tempo, 3), 'e': round(A.lead + b / tempo, 3)} for a, b in phr]
+vo = load(VOF); D = round(min(A.max, A.lead + len(vo) / SR + 0.35), 2)
+json.dump({'timing': timing, 'duration': D, 'lead': A.lead, 'vo': len(vo) / SR}, open(os.path.join(B, f'timing-{A.lang}.json'), 'w'), indent=1)
+print('VO', round(len(vo) / SR, 2), 's · video', D, 's · tempo', round(tempo, 3)); print(json.dumps(timing))
 
 # ——— 2. Sound design ———
 P = timing; n = int(D * SR); t = np.arange(n) / SR; L = np.zeros(n); R = np.zeros(n); rng = np.random.default_rng(7)
@@ -64,7 +71,8 @@ add(drone * env(1.2, 0.6, dl) * np.linspace(0.8, 1.25, dl) * 0.10, 0)
 hb = 0.3
 while hb < P[3]['s'] - 0.2: add(thump(), hb, 0.55); add(thump(48), hb + 0.24, 0.38); hb += 0.82
 gl = int(0.4 * SR); gn = np.round(rng.standard_normal(gl) * 3) / 3; gn *= (np.sin(np.arange(gl) / SR * 2 * np.pi * 31) > 0) * np.exp(-np.arange(gl) / SR * 6)
-add(gn * 0.10, P[0]['s'] + 0.45, pan=-0.3); add(np.roll(gn, 800) * 0.08, P[0]['s'] + 0.45, pan=0.3)
+GL = json.load(open(os.path.join(HERE, 'strings', f'{A.lang}.json'), encoding='utf-8'))['glitch']; gt = P[GL['phrase']]['s'] + GL['offset']
+add(gn * 0.10, gt, pan=-0.3); add(np.roll(gn, 800) * 0.08, gt, pan=0.3)
 k = np.arange(int(0.7 * SR)) / SR; add(np.sin(2 * np.pi * np.cumsum(1318 * (1 - 0.12 * np.clip((k - 0.25) * 3, 0, 1))) / SR) * np.exp(-k * 5) * 0.09, P[1]['s'] + 0.05, pan=0.2)
 click = np.sin(2 * np.pi * 3800 * np.arange(int(0.02 * SR)) / SR) * np.exp(-np.arange(int(0.02 * SR)) / SR * 300); tk = P[3]['s']
 while tk < tl - 0.3: add(click * 0.05, tk, pan=0.4 if int(tk * 4) % 2 else -0.4); tk += 0.25
@@ -90,5 +98,5 @@ e = np.convolve(np.abs(vfull), np.ones(int(0.08 * SR)) / int(0.08 * SR), 'same')
 music /= max(1e-6, np.abs(music).max()) / 0.5
 mix = np.tanh((music * 0.55 + np.stack([vfull, vfull], 1)) * 1.1) / np.tanh(1.1)
 mix.astype(np.float32).tofile(os.path.join(B, 'mix.f32'))
-subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'f32le', '-ar', str(SR), '-ac', '2', '-i', os.path.join(B, 'mix.f32'), '-af', 'loudnorm=I=-14:TP=-1.5:LRA=9', '-ar', str(SR), '-c:a', 'pcm_s16le', os.path.join(B, 'audio_final.wav')], check=True)
-print('audio →', os.path.join(B, 'audio_final.wav'))
+subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'f32le', '-ar', str(SR), '-ac', '2', '-i', os.path.join(B, 'mix.f32'), '-af', 'loudnorm=I=-14:TP=-1.5:LRA=9', '-ar', str(SR), '-c:a', 'pcm_s16le', os.path.join(B, f'audio_final-{A.lang}.wav')], check=True)
+print('audio →', os.path.join(B, f'audio_final-{A.lang}.wav'))

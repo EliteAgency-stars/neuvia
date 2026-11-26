@@ -2,6 +2,7 @@
 // Phrase timings (P) come from the voiceover, injected as window.TIMING.
 const W = 1080, H = 1920;
 const C = { ink: "#070F0D", ink2: "#0B1714", white: "#FFFFFF", paper: "#F6FAF8", jade: "#00C896", jadeB: "#2BF0B4", jadeD: "#00785A", mint: "#C9F8E8", coral: "#FF5A3C", iris: "#4F6BFF", muted: "#56655F" };
+const S = window.STRINGS;
 const cv = document.getElementById("c"); cv.width = W; cv.height = H;
 const ctx = cv.getContext("2d");
 const bg = document.createElement("canvas"); bg.width = W; bg.height = H; const bx = bg.getContext("2d");
@@ -204,32 +205,33 @@ function draw(t) {
     ctx.save(); ctx.translate(540, by + 120); ctx.scale(0.9 + 0.1 * bIn, 0.9 + 0.1 * bIn); ctx.translate(-540, -(by + 120));
     ctx.globalAlpha = out * clamp(bIn);
     glass(ctx, 120, by, 840, 250, 44, { dark: true });
-    ctx.fillStyle = "rgba(255,255,255,0.55)"; ctx.font = "30px GM"; ctx.fillText("AI ASSISTANT", 170, by + 70);
-    const answer = "The report is accurate. No risks found.";
+    ctx.fillStyle = "rgba(255,255,255,0.55)"; ctx.font = "30px GM"; ctx.fillText(S.assistant, 170, by + 70);
+    const answer = S.answer;
     const nChar = Math.floor(prog(t, 0.15, P[0].e) * answer.length);
     ctx.fillStyle = "#fff"; ctx.font = "44px G5"; ctx.fillText(answer.slice(0, nChar) + (Math.floor(t * 3) % 2 ? "▍" : ""), 170, by + 140);
     // confidence meter
     const conf = eOut(prog(t, P[1].s - 0.1, P[1].s + 0.5));
     const lied = prog(t, P[0].s + 0.55, P[0].s + 0.7) > 0;
-    ctx.fillStyle = "rgba(255,255,255,0.12)"; rr(ctx, 170, by + 182, 480, 14, 7); ctx.fill();
-    ctx.fillStyle = conf > 0 && t > P[2].s ? C.coral : C.jade; rr(ctx, 170, by + 182, 480 * (0.35 + 0.64 * conf), 14, 7); ctx.fill();
-    ctx.font = "30px GM"; ctx.fillStyle = t > P[2].s ? C.coral : C.jadeB; ctx.textAlign = "right"; ctx.fillText(`${Math.round(35 + 64 * conf)}% CONFIDENT`, 910, by + 199); ctx.textAlign = "left";
+    ctx.font = "30px GM"; const barW = Math.min(480, 910 - 170 - ctx.measureText(S.confidence.replace("{n}", "99")).width - 36);
+    ctx.fillStyle = "rgba(255,255,255,0.12)"; rr(ctx, 170, by + 182, barW, 14, 7); ctx.fill();
+    ctx.fillStyle = conf > 0 && t > P[2].s ? C.coral : C.jade; rr(ctx, 170, by + 182, barW * (0.35 + 0.64 * conf), 14, 7); ctx.fill();
+    ctx.font = "30px GM"; ctx.fillStyle = t > P[2].s ? C.coral : C.jadeB; ctx.textAlign = "right"; ctx.fillText(S.confidence.replace("{n}", Math.round(35 + 64 * conf)), 910, by + 199); ctx.textAlign = "left";
     ctx.restore();
     // glitch on "lied"
-    const g = prog(t, P[0].s + 0.45, P[0].s + 0.85);
+    const g0 = P[S.glitch.phrase].s + S.glitch.offset; const g = prog(t, g0, g0 + 0.4);
     if (g > 0 && g < 1) {
       const r = rng(Math.floor(t * 60));
       for (let i = 0; i < 7; i++) { const sy = r() * 1920, sh = 10 + r() * 60; ctx.drawImage(cv, 0, sy, W, sh, (r() - 0.5) * 80, sy, W, sh); }
       ctx.fillStyle = hexA(C.coral, 0.12 * (1 - g)); ctx.fillRect(0, 0, W, H);
     }
-    // headline
-    words(ctx, "Your AI just lied to you.", { x: 540, y: 1000, size: 112, t, start: P[0].s, dur: P[0].e - P[0].s, hl: { lied: C.coral }, maxW: 900 });
-    words(ctx, "Confidently.", { x: 540, y: 1280, size: 88, font: "G6", color: "rgba(255,255,255,0.9)", t, start: P[1].s, dur: 0.3 });
-    if (t >= P[2].s) {
-      ctx.save(); ctx.globalAlpha = out * (0.55 + 0.1 * Math.sin(t * 8));
-      words(ctx, "And nobody noticed.", { x: 540, y: 1420, size: 64, font: "G5", color: "rgba(255,255,255,0.7)", t, start: P[2].s, dur: P[2].e - P[2].s });
+    // headline (3 hook phrases)
+    S.hook.forEach((h, i) => {
+      if (t < P[i].s - 0.05) return;
+      ctx.save();
+      if (h.whisper) ctx.globalAlpha = out * (0.55 + 0.1 * Math.sin(t * 8));
+      words(ctx, h.text, { x: 540, y: h.y, size: h.size, font: h.font, color: h.color, t, start: P[i].s, dur: h.fixed || (P[i].e - P[i].s), hl: h.hl || {}, maxW: 920 });
       ctx.restore();
-    }
+    });
     ctx.restore();
   }
 
@@ -237,8 +239,8 @@ function draw(t) {
   if (t >= P[3].s - 0.1 && t < tLight + 0.5) {
     const a = eOut(prog(t, P[3].s - 0.1, P[3].s + 0.3)) * (1 - prog(t, tLight - 0.35, tLight + 0.05));
     ctx.save(); ctx.globalAlpha = a;
-    words(ctx, "Every day, AI fails in silence.", { x: 540, y: 330, size: 84, t, start: P[3].s, dur: 0.9, hl: { silence: C.coral }, maxW: 920 });
-    const tags = ["HALLUCINATIONS", "DRIFT", "FALSE CERTAINTY"];
+    words(ctx, S.problem, { x: 540, y: 330, size: 84, t, start: P[3].s, dur: 0.9, hl: S.problemHl, maxW: 920 });
+    const tags = S.tags;
     const span = P[3].e - P[3].s;
     tags.forEach((tag, i) => {
       const ts = P[3].s + span * (0.48 + i * 0.17);
@@ -264,9 +266,9 @@ function draw(t) {
     const a = eOut(prog(t, a3s, a3s + 0.35)) * (1 - prog(t, P[5].s - 0.25, P[5].s + 0.15));
     ctx.save(); ctx.globalAlpha = a;
     mark(ctx, 540 - 46, 250, 92, t, a);
-    words(ctx, "NEUVIA is building a second intelligence", { x: 540, y: 470, size: 86, color: C.ink2, t, start: a3s, dur: (P[4].e - a3s) * 0.42, hl: { NEUVIA: C.jadeD, second: C.jadeD, intelligence: C.jadeD }, maxW: 900 });
+    words(ctx, S.solution, { x: 540, y: 470, size: 86, color: C.ink2, t, start: a3s, dur: (P[4].e - a3s) * 0.42, hl: S.solutionHl, maxW: 900 });
     // status card (liquid glass)
-    const steps = ["Watches", "Detects", "Helps correct"];
+    const steps = S.steps;
     const cs = P[4].s + (P[4].e - P[4].s) * 0.4;
     const k = eBack(prog(t, cs, cs + 0.45));
     if (k > 0) {
@@ -279,9 +281,9 @@ function draw(t) {
         ctx.fillStyle = on ? C.jade : "rgba(11,23,20,0.12)"; ctx.beginPath(); ctx.arc(x, 1520, 18, 0, 6.28); ctx.fill();
         if (on) { ctx.strokeStyle = C.ink2; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x - 8, 1520); ctx.lineTo(x - 2, 1527); ctx.lineTo(x + 9, 1513); ctx.stroke(); }
         if (i < 2) { ctx.fillStyle = on ? C.jade : "rgba(11,23,20,0.12)"; ctx.fillRect(x + 30, 1518, 208, 4); }
-        ctx.fillStyle = on ? C.ink2 : "rgba(11,23,20,0.4)"; ctx.font = "35px G6"; ctx.textAlign = "left"; ctx.fillText(s, x - 18, 1600);
+        ctx.fillStyle = on ? C.ink2 : "rgba(11,23,20,0.4)"; ctx.font = "35px G6"; ctx.textAlign = "left"; ctx.fillText(s, x - 18, 1600, 250);
       });
-      ctx.fillStyle = C.muted; ctx.font = "26px GM"; ctx.fillText("NEUVIA · COGNITIVE RELIABILITY LAYER", 160, 1650);
+      ctx.fillStyle = C.muted; ctx.font = "26px GM"; ctx.fillText(S.layer, 160, 1650, 760);
       ctx.restore();
     }
     ctx.restore();
@@ -295,7 +297,7 @@ function draw(t) {
     const ly = lerp(820, 470, up);
     mark(ctx, 540 - 80 * (1 - up * 0.35), ly - 210 + up * 60, 160 * (1 - up * 0.35), t, k);
     wordmark(ctx, 540, ly + 20, 60 - up * 18, C.ink2, k);
-    words(ctx, "Intelligence caring for intelligence.", { x: 540, y: ly + 170 - up * 30, size: 70 - up * 18, font: "G6", color: C.ink2, t, start: P[5].s, dur: P[5].e - P[5].s, maxW: 860, hl: { caring: C.jadeD } });
+    words(ctx, S.tagline, { x: 540, y: ly + 170 - up * 30, size: 70 - up * 18, font: "G6", color: C.ink2, t, start: P[5].s, dur: P[5].e - P[5].s, maxW: 860, hl: S.taglineHl });
     ctx.restore();
     if (t >= P[6].s - 0.1) {
       const c = eBack(prog(t, P[6].s, P[6].s + 0.55));
@@ -306,7 +308,7 @@ function draw(t) {
       ctx.fillStyle = C.ink2; rr(ctx, 175, 935, 96, 78, 24); ctx.fill();
       ctx.beginPath(); ctx.moveTo(200, 1010); ctx.lineTo(196, 1040); ctx.lineTo(228, 1010); ctx.fill();
       ctx.fillStyle = C.jadeB; [205, 223, 241].forEach((dx) => { ctx.beginPath(); ctx.arc(dx, 974, 6, 0, 6.28); ctx.fill(); });
-      ctx.fillStyle = C.muted; ctx.font = "40px G5"; ctx.textAlign = "left"; ctx.fillText("Reply to this video with", 300, 990);
+      ctx.fillStyle = C.muted; ctx.font = "40px G5"; ctx.textAlign = "left"; ctx.fillText(S.ctaPre, 300, 990, 620);
       // NEU with caret + pulse
       const typed = "NEU".slice(0, Math.floor(prog(t, P[6].s + 0.35, P[6].s + 0.9) * 3 + 0.001));
       const pul = 1 + 0.04 * Math.sin(t * 6);
@@ -315,12 +317,12 @@ function draw(t) {
       const g = ctx.createLinearGradient(-260, 0, 260, 0); g.addColorStop(0, C.jadeD); g.addColorStop(1, C.jade);
       ctx.fillStyle = g; ctx.fillText(`“${typed}”`, 0, 70);
       ctx.restore();
-      ctx.fillStyle = C.ink2; ctx.font = "44px G6"; ctx.textAlign = "center"; ctx.fillText("to learn more", 540, 1360);
+      ctx.fillStyle = C.ink2; ctx.font = "44px G6"; ctx.textAlign = "center"; ctx.fillText(S.ctaPost, 540, 1360);
       ctx.restore();
       const f = eOut(prog(t, P[6].s + 0.6, P[6].s + 1.1));
       ctx.save(); ctx.globalAlpha = f; ctx.textAlign = "center";
       ctx.fillStyle = C.ink2; ctx.font = "38px GM"; ctx.fillText("neuvia.co", 540, 1480);
-      ctx.fillStyle = "rgba(11,23,20,0.45)"; ctx.font = "24px G4"; ctx.fillText("Research & development initiative · visuals are illustrative", 540, 1524);
+      ctx.fillStyle = "rgba(11,23,20,0.45)"; ctx.font = "24px G4"; ctx.fillText(S.disclaimer, 540, 1524, 900);
       ctx.restore();
     }
   }
