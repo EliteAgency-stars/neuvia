@@ -3,17 +3,17 @@
 
 Usage:
   python3 n8n/build-workflow.py > n8n/neuvia-early-access.json            # placeholders (safe to commit)
-  WEBHOOK_SECRET=... RPC_SECRET=... EMAIL_CRED_ID=... EMAIL_CRED_NAME=... EMAIL_NODE=smtp|gmail \
-    python3 n8n/build-workflow.py > /tmp/deploy.json                       # deployable copy (never commit)
+  WEBHOOK_SECRET=... RPC_SECRET=... python3 n8n/build-workflow.py > /tmp/deploy.json   # deployable copy (never commit)
+
+Emails are sent with the Gmail node (v2.1) and the Google OAuth2 credential "Proyectum IA.com",
+the same setup used by the "Proyectum IA - Neo · Avisos" workflow.
 """
 import json, os
 
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "{{SET_WEBHOOK_SECRET}}")
 RPC_SECRET = os.environ.get("RPC_SECRET", "{{SET_RPC_SECRET}}")
-EMAIL_NODE = os.environ.get("EMAIL_NODE", "smtp")
-EMAIL_CRED_ID = os.environ.get("EMAIL_CRED_ID", "")
-EMAIL_CRED_NAME = os.environ.get("EMAIL_CRED_NAME", "ProyectumIA")
-FROM_EMAIL = os.environ.get("FROM_EMAIL", "NEUVIA <founder@proyectumia.com>")
+GMAIL_CRED_ID = os.environ.get("GMAIL_CRED_ID", "4AkzlUDsuuMLEln4")
+GMAIL_CRED_NAME = os.environ.get("GMAIL_CRED_NAME", "Proyectum IA.com")
 FOUNDER_EMAIL = os.environ.get("FOUNDER_EMAIL", "founder@proyectumia.com")
 SITE = os.environ.get("SITE_URL", "https://neuvia.co")
 SUPABASE_URL = "https://opagblruzwsrxsggkjsa.supabase.co"
@@ -167,24 +167,17 @@ def respond(name, pos, code_expr, body_expr):
         "options": {"responseCode": code_expr, "responseHeaders": {"entries": [{"name": "Cache-Control", "value": "no-store"}]}},
     })
 
-def email(name, pos, prefix):
-    cred = {"id": EMAIL_CRED_ID, "name": EMAIL_CRED_NAME}
-    if EMAIL_NODE == "gmail":
-        return node(name, "n8n-nodes-base.gmail", 2.1, pos, {
-            "sendTo": f"={{{{ $('Build emails').first().json.{prefix}.to }}}}",
-            "subject": f"={{{{ $('Build emails').first().json.{prefix}.subject }}}}",
-            "emailType": "html",
-            "message": f"={{{{ $('Build emails').first().json.{prefix}.html }}}}",
-            "options": {"appendAttribution": False, "senderName": "NEUVIA", **({"replyTo": "={{ $('Build emails').first().json.founder.replyTo }}"} if prefix == "founder" else {})},
-        }, credentials={"gmailOAuth2": cred}, onError="continueRegularOutput")
-    return node(name, "n8n-nodes-base.emailSend", 2.1, pos, {
-        "fromEmail": FROM_EMAIL,
-        "toEmail": f"={{{{ $('Build emails').first().json.{prefix}.to }}}}",
+def email(name, pos, prefix, webhook_id):
+    """Gmail node — same structure as the working 'Neo · Avisos' workflow."""
+    opts = {"appendAttribution": False, "senderName": "NEUVIA"}
+    if prefix == "founder":
+        opts["replyTo"] = "={{ $('Build emails').first().json.founder.replyTo }}"
+    return node(name, "n8n-nodes-base.gmail", 2.1, pos, {
+        "sendTo": f"={{{{ $('Build emails').first().json.{prefix}.to }}}}",
         "subject": f"={{{{ $('Build emails').first().json.{prefix}.subject }}}}",
-        "emailFormat": "html",
-        "html": f"={{{{ $('Build emails').first().json.{prefix}.html }}}}",
-        "options": {"appendAttribution": False, **({"replyTo": "={{ $('Build emails').first().json.founder.replyTo }}"} if prefix == "founder" else {})},
-    }, credentials={"smtp": cred}, onError="continueRegularOutput")
+        "message": f"={{{{ $('Build emails').first().json.{prefix}.html }}}}",
+        "options": opts,
+    }, credentials={"gmailOAuth2": {"id": GMAIL_CRED_ID, "name": GMAIL_CRED_NAME}}, webhookId=webhook_id, onError="continueRegularOutput")
 
 nodes = [
     node("Webhook", "n8n-nodes-base.webhook", 2, [0, 300], {"httpMethod": "POST", "path": "neuvia-early-access", "responseMode": "responseNode", "options": {}}, webhookId="neuvia-early-access"),
@@ -208,8 +201,8 @@ nodes = [
         "options": {}}),
     respond("Respond duplicate", [1320, 340], "=200", "={{ JSON.stringify({ ok: true, duplicate: true }) }}"),
     respond("Respond created", [1320, 120], "=201", "={{ JSON.stringify({ ok: true, id: $json.id }) }}"),
-    email("Email founder", [1540, 120], "founder"),
-    email("Email requester", [1760, 120], "requester"),
+    email("Gmail: notify founder", [1540, 120], "founder", "6b1f0c52-6a0e-4e3a-9d3e-2f7a1c9b5e01"),
+    email("Gmail: confirm requester", [1760, 120], "requester", "9c4d2e71-3b5f-4c8a-8e2d-7a6b5c4d3e02"),
     node("Mark notified", "n8n-nodes-base.httpRequest", 4.2, [1980, 120], {
         "method": "POST", "url": f"{SUPABASE_URL}/rest/v1/rpc/neuvia_mark_notified",
         "sendHeaders": True, "headerParameters": {"parameters": [{"name": "apikey", "value": SUPABASE_KEY}]},
@@ -225,9 +218,9 @@ connections = {
     "Store in Supabase": {"main": [[{"node": "Build emails", "type": "main", "index": 0}], [{"node": "Storage error", "type": "main", "index": 0}]]},
     "Build emails": {"main": [[{"node": "New request?", "type": "main", "index": 0}]]},
     "New request?": {"main": [[{"node": "Respond created", "type": "main", "index": 0}], [{"node": "Respond duplicate", "type": "main", "index": 0}]]},
-    "Respond created": {"main": [[{"node": "Email founder", "type": "main", "index": 0}]]},
-    "Email founder": {"main": [[{"node": "Email requester", "type": "main", "index": 0}]]},
-    "Email requester": {"main": [[{"node": "Mark notified", "type": "main", "index": 0}]]},
+    "Respond created": {"main": [[{"node": "Gmail: notify founder", "type": "main", "index": 0}]]},
+    "Gmail: notify founder": {"main": [[{"node": "Gmail: confirm requester", "type": "main", "index": 0}]]},
+    "Gmail: confirm requester": {"main": [[{"node": "Mark notified", "type": "main", "index": 0}]]},
 }
 print(json.dumps({"name": "NEUVIA · Early Access", "nodes": nodes, "connections": connections,
                   "settings": {"executionOrder": "v1", "saveDataSuccessExecution": "none", "saveDataErrorExecution": "all", "saveManualExecutions": False}}, indent=2, ensure_ascii=False))

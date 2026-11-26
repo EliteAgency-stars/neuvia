@@ -238,55 +238,55 @@
     },
     {
       "parameters": {
-        "fromEmail": "NEUVIA <founder@proyectumia.com>",
-        "toEmail": "={{ $('Build emails').first().json.founder.to }}",
+        "sendTo": "={{ $('Build emails').first().json.founder.to }}",
         "subject": "={{ $('Build emails').first().json.founder.subject }}",
-        "emailFormat": "html",
-        "html": "={{ $('Build emails').first().json.founder.html }}",
+        "message": "={{ $('Build emails').first().json.founder.html }}",
         "options": {
           "appendAttribution": false,
+          "senderName": "NEUVIA",
           "replyTo": "={{ $('Build emails').first().json.founder.replyTo }}"
         }
       },
-      "name": "Email founder",
-      "type": "n8n-nodes-base.emailSend",
+      "name": "Gmail: notify founder",
+      "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
         1540,
         120
       ],
       "credentials": {
-        "smtp": {
-          "id": "",
-          "name": "ProyectumIA"
+        "gmailOAuth2": {
+          "id": "4AkzlUDsuuMLEln4",
+          "name": "Proyectum IA.com"
         }
       },
+      "webhookId": "6b1f0c52-6a0e-4e3a-9d3e-2f7a1c9b5e01",
       "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "fromEmail": "NEUVIA <founder@proyectumia.com>",
-        "toEmail": "={{ $('Build emails').first().json.requester.to }}",
+        "sendTo": "={{ $('Build emails').first().json.requester.to }}",
         "subject": "={{ $('Build emails').first().json.requester.subject }}",
-        "emailFormat": "html",
-        "html": "={{ $('Build emails').first().json.requester.html }}",
+        "message": "={{ $('Build emails').first().json.requester.html }}",
         "options": {
-          "appendAttribution": false
+          "appendAttribution": false,
+          "senderName": "NEUVIA"
         }
       },
-      "name": "Email requester",
-      "type": "n8n-nodes-base.emailSend",
+      "name": "Gmail: confirm requester",
+      "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
         1760,
         120
       ],
       "credentials": {
-        "smtp": {
-          "id": "",
-          "name": "ProyectumIA"
+        "gmailOAuth2": {
+          "id": "4AkzlUDsuuMLEln4",
+          "name": "Proyectum IA.com"
         }
       },
+      "webhookId": "9c4d2e71-3b5f-4c8a-8e2d-7a6b5c4d3e02",
       "onError": "continueRegularOutput"
     },
     {
@@ -411,25 +411,25 @@
       "main": [
         [
           {
-            "node": "Email founder",
+            "node": "Gmail: notify founder",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Email founder": {
+    "Gmail: notify founder": {
       "main": [
         [
           {
-            "node": "Email requester",
+            "node": "Gmail: confirm requester",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Email requester": {
+    "Gmail: confirm requester": {
       "main": [
         [
           {
