@@ -1,0 +1,301 @@
+@import "tailwindcss";
+
+/*
+  NEUVIA design tokens
+  White-first, graphite ink, vivid jade as the signature colour.
+  Jade (#00C896) is used for fills, glows and marks with dark text on top;
+  Jade Deep (#00785A) is the accessible variant for text on white (5.4:1).
+*/
+@theme {
+  --color-white: #ffffff;
+  --color-paper: #f6faf8;
+  --color-mist: #eef5f2;
+  --color-ink: #0b1714;
+  --color-ink-2: #1e2c28;
+  --color-muted: #56655f;
+  --color-line: #e2ebe7;
+  --color-line-strong: #cfdcd6;
+
+  --color-jade: #00c896;
+  --color-jade-bright: #2bf0b4;
+  --color-jade-deep: #00785a;
+  --color-jade-ink: #04221a;
+  --color-mint: #c9f8e8;
+  --color-mint-soft: #e9fcf5;
+
+  --color-iris: #4f6bff;
+  --color-iris-soft: #e8ecff;
+  --color-coral: #ff5a3c;
+  --color-coral-soft: #fff0ec;
+  --color-amber: #f0a020;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --radius-glass: 1.375rem;
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+    scroll-padding-top: 6rem;
+  }
+  body {
+    background: var(--color-white);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background: var(--color-mint);
+    color: var(--color-jade-ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-jade-deep);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+  h1, h2, h3, h4 {
+    text-wrap: balance;
+    letter-spacing: -0.025em;
+  }
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@layer components {
+  /* ——— Liquid Glass ———
+     Layered translucent material: blur + saturation for the body,
+     a specular gradient rim, an inner top highlight and a soft contact shadow. */
+  .glass {
+    position: relative;
+    isolation: isolate;
+    background:
+      linear-gradient(135deg, rgb(255 255 255 / 0.72), rgb(255 255 255 / 0.42));
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    backdrop-filter: blur(22px) saturate(180%);
+    border-radius: var(--radius-glass);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.9),
+      inset 0 -1px 0 0 rgb(255 255 255 / 0.25),
+      0 1px 2px rgb(11 23 20 / 0.04),
+      0 12px 32px -12px rgb(11 23 20 / 0.18);
+  }
+  .glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      150deg,
+      rgb(255 255 255 / 0.95) 0%,
+      rgb(255 255 255 / 0.2) 38%,
+      rgb(0 200 150 / 0.22) 70%,
+      rgb(255 255 255 / 0.7) 100%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: -1;
+  }
+  .glass::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(120% 60% at 20% 0%, rgb(255 255 255 / 0.55), transparent 55%);
+    pointer-events: none;
+    z-index: -1;
+  }
+  .glass-dark {
+    position: relative;
+    isolation: isolate;
+    background: linear-gradient(135deg, rgb(20 34 30 / 0.78), rgb(11 23 20 / 0.62));
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    backdrop-filter: blur(22px) saturate(160%);
+    border-radius: var(--radius-glass);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.12),
+      0 20px 40px -20px rgb(0 0 0 / 0.5);
+    border: 1px solid rgb(255 255 255 / 0.08);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass { background: rgb(255 255 255 / 0.94); }
+    .glass-dark { background: rgb(14 26 23 / 0.96); }
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 2.875rem;
+    padding: 0 1.25rem;
+    border-radius: 999px;
+    font-weight: 560;
+    font-size: 0.9375rem;
+    letter-spacing: -0.01em;
+    transition: transform 0.35s var(--ease-out-soft), box-shadow 0.35s var(--ease-out-soft), background-color 0.2s;
+    white-space: nowrap;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: var(--color-jade);
+    color: var(--color-jade-ink);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.45),
+      0 0 0 1px rgb(0 120 90 / 0.18),
+      0 8px 24px -8px rgb(0 200 150 / 0.65);
+  }
+  .btn-primary:hover {
+    background: var(--color-jade-bright);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.5),
+      0 0 0 1px rgb(0 120 90 / 0.2),
+      0 12px 32px -8px rgb(0 200 150 / 0.8);
+  }
+  .btn-dark {
+    background: var(--color-ink);
+    color: white;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 8px 20px -10px rgb(11 23 20 / 0.6);
+  }
+  .btn-dark:hover { background: var(--color-ink-2); }
+  .btn-ghost {
+    color: var(--color-ink);
+    background: rgb(255 255 255 / 0.6);
+    box-shadow: inset 0 0 0 1px var(--color-line-strong);
+  }
+  .btn-ghost:hover { background: white; box-shadow: inset 0 0 0 1px var(--color-ink); }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-jade-deep);
+  }
+  .text-balance-lg {
+    font-size: clamp(2.5rem, 5.3vw, 4.5rem);
+    line-height: 0.98;
+    letter-spacing: -0.045em;
+    font-weight: 600;
+  }
+  .h-section {
+    font-size: clamp(2rem, 4.2vw, 3.5rem);
+    line-height: 1.04;
+    letter-spacing: -0.04em;
+    font-weight: 600;
+  }
+  .lead {
+    font-size: clamp(1.0625rem, 1.5vw, 1.25rem);
+    line-height: 1.6;
+    color: var(--color-muted);
+  }
+  .hairline { border-color: var(--color-line); }
+
+  .grid-paper {
+    background-image:
+      linear-gradient(to right, rgb(11 23 20 / 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(11 23 20 / 0.045) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 75%);
+  }
+  .aurora {
+    background:
+      radial-gradient(40% 50% at 78% 30%, rgb(0 200 150 / 0.22), transparent 70%),
+      radial-gradient(30% 40% at 62% 70%, rgb(79 107 255 / 0.12), transparent 70%),
+      radial-gradient(35% 45% at 15% 20%, rgb(43 240 180 / 0.12), transparent 70%);
+  }
+
+  /* Editorial prose (Markdown) */
+  .prose-neuvia { color: var(--color-ink-2); font-size: 1.0625rem; line-height: 1.75; }
+  .prose-neuvia > * + * { margin-top: 1.15em; }
+  .prose-neuvia h2 { font-size: 1.625rem; line-height: 1.2; font-weight: 600; color: var(--color-ink); margin-top: 2.2em; }
+  .prose-neuvia h3 { font-size: 1.25rem; font-weight: 600; color: var(--color-ink); margin-top: 1.8em; }
+  .prose-neuvia a { color: var(--color-jade-deep); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  .prose-neuvia ul { list-style: none; padding-left: 0; }
+  .prose-neuvia ul li { position: relative; padding-left: 1.4em; }
+  .prose-neuvia ul li + li { margin-top: 0.45em; }
+  .prose-neuvia ul li::before { content: ""; position: absolute; left: 0.2em; top: 0.72em; width: 0.42em; height: 0.42em; border-radius: 99px; background: var(--color-jade); }
+  .prose-neuvia ol { list-style: decimal; padding-left: 1.3em; }
+  .prose-neuvia blockquote { border-left: 2px solid var(--color-jade); padding-left: 1.1em; color: var(--color-ink); font-size: 1.15em; }
+  .prose-neuvia code { font-family: var(--font-mono); font-size: 0.88em; background: var(--color-mist); padding: 0.12em 0.4em; border-radius: 6px; }
+  .prose-neuvia strong { color: var(--color-ink); font-weight: 600; }
+  .prose-neuvia hr { border-color: var(--color-line); margin: 2.5em 0; }
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(0 200 150 / 0.55); }
+  50% { box-shadow: 0 0 0 6px rgb(0 200 150 / 0); }
+}
+.animate-rise { animation: rise 0.9s var(--ease-out-soft) both; }
+.animate-pulse-dot { animation: pulse-dot 2.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@keyframes reveal-in {
+  from { opacity: 0; transform: translateY(22px); filter: blur(5px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: reveal-in linear both;
+      animation-timeline: view();
+      animation-range: entry calc(0% + var(--reveal-delay, 0%)) entry calc(55% + var(--reveal-delay, 0%));
+    }
+  }
+}
+
+/* Range inputs (Lab) */
+.lab-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 99px;
+  outline-offset: 6px;
+}
+.lab-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 99px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgb(11 23 20 / 0.12), 0 2px 6px rgb(11 23 20 / 0.18), inset 0 0 0 5px var(--color-jade);
+  cursor: grab;
+  transition: transform 0.2s var(--ease-spring);
+}
+.lab-range::-webkit-slider-thumb:active { transform: scale(1.18); cursor: grabbing; }
+.lab-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 99px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgb(11 23 20 / 0.12), 0 2px 6px rgb(11 23 20 / 0.18), inset 0 0 0 5px var(--color-jade);
+}
