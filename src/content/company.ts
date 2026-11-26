@@ -148,7 +148,7 @@ export const security: Localized<PageDoc> = {
         { type: "p", text: "Machine-readable contact information is published at /.well-known/security.txt." },
       ] },
       { id: "measures", title: "Measures on this website", blocks: [
-        { type: "list", items: ["HTTPS everywhere with HSTS, a restrictive Content-Security-Policy and anti-framing headers", "Server-side validation and sanitization of every form input", "Rate limiting, honeypot fields and duplicate-submission protection", "Credentials kept exclusively in server-side environment variables", "Row-level security on the database; no public read access to submissions", "Administrative access protected by a signed, HTTP-only session and audit log", "No third-party trackers or advertising scripts"] },
+        { type: "list", items: ["HTTPS everywhere with HSTS, a restrictive Content-Security-Policy and anti-framing headers", "Server-side validation and sanitization of every form input", "Rate limiting, honeypot fields and duplicate-submission protection", "Credentials kept exclusively in server-side environment variables", "Row-level security on the database; no public read access to submissions", "Administrative access through Supabase Auth, restricted to an allowlist enforced by database row-level security, with an audit log", "No third-party trackers or advertising scripts"] },
       ] },
       { id: "ai", title: "AI safety commitment", blocks: [
         { type: "callout", tone: "note", text: "NEUVIA will never be presented or designed as a mechanism to evade the safety restrictions of other AI models. Any future intervention on an artificial system must be authorized by its operator, traceable and respectful of its operational controls." },
@@ -177,7 +177,7 @@ export const privacy: Localized<PageDoc> = {
       ] },
       { id: "retention", title: "4. Retention", blocks: [{ type: "p", text: `Requests are kept for as long as needed to handle them and for up to ${TODO} (suggested: 24 months) afterwards, unless a longer period is legally required. Newsletter consent data is kept until you withdraw consent.` }] },
       { id: "processors", title: "5. Processors and transfers", blocks: [
-        { type: "list", items: ["Hosting: Vercel Inc. (website delivery).", "Database: Supabase (storage of submissions).", "Transactional email: the provider configured by the owner (e.g. Resend), only if notifications are enabled."] },
+        { type: "list", items: ["Hosting: Vercel Inc. (website delivery).", "Database: Supabase (storage of submissions).", "Workflow automation and email: a self-hosted n8n instance operated by the owner, which stores requests and sends notifications through the owner's ProyectumIA mailbox."] },
         { type: "p", text: `Some processors may process data outside the EU/EEA. Transfers rely on appropriate safeguards such as Standard Contractual Clauses. Data processing agreements: ${TODO}.` },
       ] },
       { id: "rights", title: "6. Your rights", blocks: [{ type: "p", text: `You may request access, rectification, erasure, restriction, portability, and object to processing; you may withdraw consent at any time. Write to ${site.contact.email}. You also have the right to lodge a complaint with a supervisory authority.` }] },

@@ -260,7 +260,7 @@ const de: Dictionary = {
   about: {
     founderEyebrow: "Gründer",
     founderBody:
-      "Santiago Alexander gründete NEUVIA ausgehend von einer einfachen Frage: Wenn Menschen Mechanismen brauchen, um ihre eigene Kognition zu verstehen und zu regulieren, könnten künstliche Systeme rechnerische Entsprechungen benötigen. Er verantwortet Vision, Partnerschaften und Forschungsrichtung der Initiative.",
+      "Santiago Orjuela gründete NEUVIA ausgehend von einer einfachen Frage: Wenn Menschen Mechanismen brauchen, um ihre eigene Kognition zu verstehen und zu regulieren, könnten künstliche Systeme rechnerische Entsprechungen benötigen. Er verantwortet Vision, Partnerschaften und Forschungsrichtung der Initiative.",
   },
 };
 

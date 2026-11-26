@@ -19,9 +19,9 @@ export const site = {
   pillars: ["Understand", "Detect", "Regulate", "Protect"] as const,
   lastUpdated: "2026-11-26",
   founder: {
-    name: "Santiago Alexander",
+    name: "Santiago Orjuela",
     role: "Founder & CEO",
-    image: "/team/santiago-alexander.webp",
+    image: "/team/santiago-orjuela.webp",
   },
   contact: {
     email: "founder@proyectumia.com",

@@ -1,30 +1,29 @@
-import { describe, expect, it, beforeEach, vi } from "vitest";
+import { describe, expect, it, vi, afterEach } from "vitest";
 
 vi.mock("next/headers", () => ({ cookies: vi.fn(), headers: vi.fn() }));
 
-describe("admin session tokens", () => {
-  beforeEach(() => {
-    process.env.ADMIN_PASSWORD = "correct-horse-battery-staple";
-    process.env.ADMIN_SESSION_SECRET = "s".repeat(48);
+describe("admin allowlist", () => {
+  afterEach(() => { delete process.env.ADMIN_EMAILS; });
+
+  it("defaults to the founder account only", async () => {
+    const m = await import("@/lib/admin-auth");
+    expect(m.isAllowedAdmin("founder@proyectumia.com")).toBe(true);
+    expect(m.isAllowedAdmin("FOUNDER@ProyectumIA.com")).toBe(true);
+    expect(m.isAllowedAdmin("someone@example.com")).toBe(false);
+    expect(m.isAllowedAdmin(undefined)).toBe(false);
   });
 
-  it("is disabled with weak configuration", async () => {
-    process.env.ADMIN_PASSWORD = "short";
+  it("supports a configurable comma-separated list", async () => {
+    process.env.ADMIN_EMAILS = "a@neuvia.co, b@neuvia.co";
     const m = await import("@/lib/admin-auth");
-    expect(m.adminConfigured()).toBe(false);
-    expect(m.passwordMatches("short")).toBe(false);
+    expect(m.isAllowedAdmin("b@neuvia.co")).toBe(true);
+    expect(m.isAllowedAdmin("founder@proyectumia.com")).toBe(false);
   });
 
-  it("verifies valid tokens and rejects tampered ones", async () => {
+  it("issues hardened cookies", async () => {
     const m = await import("@/lib/admin-auth");
-    expect(m.passwordMatches("correct-horse-battery-staple")).toBe(true);
-    expect(m.passwordMatches("wrong-password-here!!")).toBe(false);
-    const t = m.createSessionToken();
-    expect(m.verifySessionToken(t)).toBe(true);
-    const [p, s] = t.split(".");
-    expect(m.verifySessionToken(`${p}x.${s}`)).toBe(false);
-    expect(m.verifySessionToken(`${p}.${s.slice(0, -2)}aa`)).toBe(false);
-    process.env.ADMIN_SESSION_SECRET = "t".repeat(48);
-    expect(m.verifySessionToken(t)).toBe(false);
+    const c = m.authCookie(m.AT, "x", 60);
+    expect(c).toMatchObject({ httpOnly: true, secure: true, sameSite: "strict", path: "/" });
+    expect(m.AT.startsWith("__Host-")).toBe(true);
   });
 });

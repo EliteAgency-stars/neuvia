@@ -1,4 +1,4 @@
-import { isAuthenticated, audit } from "@/lib/admin-auth";
+import { getAdminSession, audit } from "@/lib/admin-auth";
 import { rest, TABLE } from "@/lib/db";
 import { INTERESTS, STATUSES } from "@/lib/validation";
 
@@ -13,7 +13,8 @@ const cell = (v: unknown) => {
 };
 
 export async function GET(req: Request) {
-  if (!(await isAuthenticated())) return new Response("Unauthorized", { status: 401 });
+  const session = await getAdminSession();
+  if (!session) return new Response("Unauthorized", { status: 401 });
   const u = new URL(req.url);
   const status = u.searchParams.get("status");
   const interest = u.searchParams.get("interest");
@@ -25,10 +26,10 @@ export async function GET(req: Request) {
     interest && INTERESTS.includes(interest as never) && `interest=eq.${interest}`,
     q && `or=(full_name.ilike.*${encodeURIComponent(q)}*,email.ilike.*${encodeURIComponent(q)}*,organization.ilike.*${encodeURIComponent(q)}*)`,
   ].filter(Boolean).join("&");
-  const res = await rest<Record<string, unknown>[]>(TABLE, { query });
+  const res = await rest<Record<string, unknown>[]>(TABLE, { token: session.token, query });
   if (!res.ok) return new Response("Export failed", { status: 502 });
   const rows = res.data || [];
-  await audit("export", null, { count: rows.length, status, interest, q });
+  await audit(session, "export", null, { count: rows.length, status, interest, q });
   const csv = [COLS.join(","), ...rows.map((r) => COLS.map((c) => cell(r[c])).join(","))].join("\r\n");
   return new Response("﻿" + csv, {
     headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="neuvia-requests-${new Date().toISOString().slice(0, 10)}.csv"`, "Cache-Control": "no-store" },

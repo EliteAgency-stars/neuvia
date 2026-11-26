@@ -258,7 +258,7 @@ const en = {
   about: {
     founderEyebrow: "Founder",
     founderBody:
-      "Santiago Alexander founded NEUVIA around a simple question: if humans need mechanisms to understand and regulate their own cognition, artificial systems may need computational equivalents. He leads the initiative's vision, partnerships and research direction.",
+      "Santiago Orjuela founded NEUVIA around a simple question: if humans need mechanisms to understand and regulate their own cognition, artificial systems may need computational equivalents. He leads the initiative's vision, partnerships and research direction.",
   },
 };
 

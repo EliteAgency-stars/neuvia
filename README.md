@@ -19,8 +19,9 @@ Public platform for NEUVIA: research communication, a conceptual architecture, a
 | Hero | Canvas 2D (`NeuralField`) | Light, pauses off-screen / hidden tab, static frame with reduced motion |
 | Icons / fonts | `lucide-react`, `geist` (self-hosted) | No external font/CDN requests; CSP stays `self`-only |
 | Validation | Zod 4, shared client + server | Same rules in the browser and the API |
-| Database | Supabase Postgres via PostgREST + service-role key (server only) | No client SDK needed; RLS on with **no public policies** |
-| Email | Resend HTTP API (optional) | Configurable by env; submissions are stored even if email is off |
+| Pipeline | n8n workflow `NEUVIA · Early Access` (`n8n/`) | Webhook → validation → Supabase RPC → HTML emails via the ProyectumIA mailbox |
+| Database | Supabase Postgres, **no service-role key in the app** | Inserts via secret-protected RPC (from n8n); admin reads with the signed-in user's JWT under RLS |
+| Admin auth | Supabase Auth (email + password) | Allowlist `ADMIN_EMAILS` + `public.neuvia_admins` enforced in RLS |
 | Content | Typed content objects (`src/content/*.ts`) + Markdown articles (`src/content/research/*.md`) | HTML pages, `/md/*`, `llms.txt`, `llms-full.txt` and JSON are generated from the same source |
 | Hosting | Vercel (Git integration on `main`) | Native Next.js support, HTTPS, edge network |
 
@@ -45,7 +46,7 @@ Public platform for NEUVIA: research communication, a conceptual architecture, a
 ```
 src/
   app/[locale]/…        localized pages (en at root via src/proxy.ts rewrite)
-  app/admin/…           admin (own root layout, noindex)
+  app/admin/…           admin (own root layout, noindex, Supabase Auth)
   app/api/…             form + public JSON
   app/(text routes)     llms.txt, llms-full.txt, neuvia.md, md/[...slug], humans.txt, .well-known
   components/           Header, Footer, Logo, NeuralField, ReliabilityLab, NcriRadar, DocPage, EarlyAccessForm…
@@ -53,7 +54,8 @@ src/
   i18n/                 config + dictionaries (en/es/de)
   lib/                  site facts, SEO, simulation, validation, db, email, admin auth, agents, markdown
 public/brand/           logo SVGs (color, dark, mono), app icon, PNG icons, OG image, manifest
-supabase/migrations/    SQL for requests + audit tables
+supabase/migrations/    SQL: tables, admin RLS, ingest RPCs
+n8n/                    workflow generator + importable export (no secrets)
 tests/                  Vitest unit tests
 docs/                   VERIFICATION.md, PENDING.md
 ```
@@ -69,24 +71,25 @@ npm run lint                 # type-check
 npm run build && npm start   # production build
 ```
 
-Without database env vars the form returns a clear "service not configured" message (it never fakes success) and `/admin` shows "Admin disabled".
+Without `N8N_WEBHOOK_SECRET` the form returns a clear "service not configured" message (it never fakes success).
 
 ## Environment variables
 
-See `.env.example`. Server-only secrets: `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `IP_HASH_SALT`. Never prefix them with `NEXT_PUBLIC_`.
+See `.env.example`. Server-only secrets: `N8N_WEBHOOK_SECRET`, `IP_HASH_SALT`. Never prefix them with `NEXT_PUBLIC_`.
 
 ## Deployment (Vercel + neuvia.co)
 
 Pushing to `main` deploys to production through the existing Vercel Git integration (project `neuvia`).
 
-1. **Environment variables** — Vercel → Project → Settings → Environment Variables (Production): `SUPABASE_URL=https://opagblruzwsrxsggkjsa.supabase.co`, `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Project Settings → API), `IP_HASH_SALT` (random), `ADMIN_PASSWORD` (≥16 chars), `ADMIN_SESSION_SECRET` (≥32 chars, e.g. `openssl rand -base64 48`), optionally `RESEND_API_KEY`, `CONTACT_RECIPIENT_EMAIL`, `EMAIL_FROM`. Redeploy after saving.
-2. **Database** — the migration in `supabase/migrations/` has already been applied to the Supabase project (tables `neuvia_access_requests`, `neuvia_admin_audit`, RLS on, no public access). For a fresh project, run it in the SQL editor.
-3. **Domain** — Vercel → Project → Domains → add `neuvia.co` and `www.neuvia.co` (redirect www → apex). At your registrar set `A @ 76.76.21.21` and `CNAME www cname.vercel-dns.com` (or use the exact records Vercel shows). HTTPS certificates are issued automatically.
-4. **Email** — in Resend, verify the `neuvia.co` domain (SPF/DKIM records), then set `EMAIL_FROM="NEUVIA <noreply@neuvia.co>"`.
-5. **Verify** — submit a test request on `/early-access`, confirm it appears in `/admin` and (if configured) by email. Then delete it from the admin panel.
-6. **Search engines** — verify the domain in Google Search Console and Bing Webmaster Tools (DNS TXT record) and submit `https://neuvia.co/sitemap.xml`.
-7. **Monitoring** — enable Vercel Observability / Runtime Logs; form failures are logged as `early-access insert failed`.
-8. **Backups** — Supabase daily backups (plan-dependent); export CSV from `/admin` periodically if you need offline copies.
+1. **Environment variables** — Vercel → Project → Settings → Environment Variables (Production): `N8N_WEBHOOK_SECRET` (must match the secret inside the workflow's *Validate request* node) and `IP_HASH_SALT`. Supabase URL/publishable key are public and built in. Redeploy after saving.
+2. **Database** — migrations in `supabase/migrations/` are applied to the Supabase project: requests + audit tables, admin RLS policies (`neuvia_admins`), and the `neuvia_submit_request` / `neuvia_mark_notified` RPCs that validate a SHA-256-hashed ingest secret.
+3. **n8n** — workflow `NEUVIA · Early Access` (source: `n8n/build-workflow.py`, export: `n8n/neuvia-early-access.json` with placeholders). It responds to the site immediately after storing the request, then emails the founder (Spanish, reply-to = requester) and the requester (en/es/de). To rotate secrets: regenerate, update the RPC hash in `neuvia_private_settings`, the workflow and Vercel.
+4. **Admin** — sign in at `/admin` with the Supabase account `founder@proyectumia.com`. To add an admin: insert the email into `public.neuvia_admins` and add it to `ADMIN_EMAILS`.
+5. **Domain** — Vercel → Project → Domains → add `neuvia.co` and `www.neuvia.co` (redirect www → apex). At your registrar set `A @ 76.76.21.21` and `CNAME www cname.vercel-dns.com` (or use the exact records Vercel shows). HTTPS certificates are issued automatically.
+6. **Verify** — submit a test request on `/early-access`, confirm both emails arrive and the row appears in `/admin`; then delete it.
+7. **Search engines** — verify the domain in Google Search Console and Bing Webmaster Tools (DNS TXT record) and submit `https://neuvia.co/sitemap.xml`.
+8. **Monitoring** — Vercel Runtime Logs (`early-access n8n forward failed`) and n8n executions (errors are saved).
+9. **Backups** — Supabase daily backups (plan-dependent); export CSV from `/admin` periodically if you need offline copies.
 
 ## Updating content
 
@@ -98,4 +101,4 @@ Pushing to `main` deploys to production through the existing Vercel Git integrat
 
 ## Security summary
 
-Strict CSP (self-only), HSTS, `X-Frame-Options: DENY`, no third-party scripts or trackers; Zod validation + sanitization; honeypot, minimum fill time, per-IP rate limiting, idempotency key (DB unique constraint) against duplicates; secret-pattern detection refuses API keys pasted into the form; same-origin check on the API; RLS without public policies; admin session = HMAC-signed `__Host-` cookie (HttpOnly, Secure, SameSite=Strict, 8h), login rate limit, audit log of every view/change/export/delete, CSV formula-injection protection. See `/security` for the disclosure policy.
+Strict CSP (self-only), HSTS, `X-Frame-Options: DENY`, no third-party scripts or trackers; Zod validation + sanitization; honeypot, minimum fill time, per-IP rate limiting, idempotency key (DB unique constraint) against duplicates; secret-pattern detection refuses API keys pasted into the form; same-origin check on the API; inserts only through a secret-checked RPC; admin = Supabase Auth tokens in `__Host-` cookies (HttpOnly, Secure, SameSite=Strict, ≤8h) validated server-side on every request, allowlist enforced by RLS, login rate limit, audit log of every view/change/export/delete, CSV formula-injection protection. See `/security` for the disclosure policy.

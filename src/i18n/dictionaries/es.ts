@@ -260,7 +260,7 @@ const es: Dictionary = {
   about: {
     founderEyebrow: "Fundador",
     founderBody:
-      "Santiago Alexander fundó NEUVIA a partir de una pregunta sencilla: si los seres humanos necesitan mecanismos para comprender y regular su propia cognición, los sistemas artificiales podrían necesitar equivalentes computacionales. Lidera la visión, las alianzas y la dirección de investigación de la iniciativa.",
+      "Santiago Orjuela fundó NEUVIA a partir de una pregunta sencilla: si los seres humanos necesitan mecanismos para comprender y regular su propia cognición, los sistemas artificiales podrían necesitar equivalentes computacionales. Lidera la visión, las alianzas y la dirección de investigación de la iniciativa.",
   },
 };
 

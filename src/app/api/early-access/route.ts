@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { accessRequestSchema, looksLikeSecret } from "@/lib/validation";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
-import { dbConfigured, rest, TABLE, hashIp } from "@/lib/db";
-import { notifyNewRequest } from "@/lib/email";
+import { hashIp } from "@/lib/hash";
+import { n8nConfigured, sendToN8n } from "@/lib/n8n";
 import { site } from "@/lib/site";
 
 export const runtime = "nodejs";
@@ -39,42 +39,16 @@ export async function POST(req: Request) {
   if (elapsed < 3000 || elapsed > 1000 * 60 * 60 * 24) return json(400, { ok: false, error: "rejected" });
   if ([r.problem, r.message, r.infrastructure].some(looksLikeSecret)) return json(422, { ok: false, error: "secret_detected", fields: ["problem"] });
 
-  if (!dbConfigured()) {
+  if (!n8nConfigured()) {
     return json(503, { ok: false, error: "not_configured", contact: site.contact.email });
   }
 
-  const insert = await rest<{ id: string }[]>(TABLE, {
-    method: "POST",
-    prefer: "return=representation",
-    query: "select=id",
-    body: {
-      full_name: r.fullName,
-      email: r.email,
-      organization: r.organization,
-      role: r.role,
-      country: r.country || null,
-      org_type: r.orgType,
-      interest: r.interest,
-      infrastructure: r.infrastructure || null,
-      problem: r.problem,
-      message: r.message || null,
-      privacy_accepted: true,
-      newsletter_opt_in: r.newsletter,
-      locale: r.locale,
-      idempotency_key: r.idempotencyKey,
-      ip_hash: hashIp(ip),
-      user_agent: (req.headers.get("user-agent") || "").slice(0, 300),
-    },
-  });
-
-  if (insert.status === 409 || insert.error === "23505") return json(200, { ok: true, duplicate: true });
-  if (!insert.ok || !insert.data?.[0]?.id) {
-    console.error("early-access insert failed", insert.status, insert.error);
-    return json(502, { ok: false, error: "storage_failed" });
-  }
-  const id = insert.data[0].id;
-  const email = await notifyNewRequest(r, id);
-  return json(201, { ok: true, id, notification: email });
+  const { website: _hp, ...data } = r;
+  const result = await sendToN8n({ ...data, ipHash: hashIp(ip), userAgent: (req.headers.get("user-agent") || "").slice(0, 300) });
+  if (result.ok) return json(result.duplicate ? 200 : 201, { ok: true, id: result.id, duplicate: !!result.duplicate });
+  console.error("early-access n8n forward failed", result.status, result.error);
+  if (result.status === 404) return json(503, { ok: false, error: "not_configured", contact: site.contact.email });
+  return json(502, { ok: false, error: "storage_failed" });
 }
 
 export function GET() {

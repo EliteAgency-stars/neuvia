@@ -25,4 +25,4 @@ Date: 2026-11-26 · Build: Next.js 16.4.6 · Node 22
 - **Email notifications** untested (no Resend key).
 - **Reference links** (`src/content/references.ts`): arXiv and DOI hosts were blocked from the build environment, so each citation was checked against established bibliographic knowledge rather than fetched live. Spot-check every link before launch.
 - **WCAG 2.2 AA**: built with semantic landmarks, labels, focus states, keyboard-operable controls, reduced-motion support and contrast-checked tokens; no automated axe audit or screen-reader session was performed.
-- **Founder photo**: the Supabase-hosted avatar could not be downloaded (host blocked by the environment proxy), so the photo supplied in chat is used (`public/team/santiago-alexander.webp`).
+- **Founder photo**: the Supabase-hosted avatar could not be downloaded (host blocked by the environment proxy), so the photo supplied in chat is used (`public/team/santiago-orjuela.webp`).

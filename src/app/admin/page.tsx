@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { LogoMark } from "@/components/Logo";
-import { adminConfigured, audit, isAuthenticated } from "@/lib/admin-auth";
-import { dbConfigured, rest, TABLE } from "@/lib/db";
+import { redirect } from "next/navigation";
+import { audit, getAdminSession, hasRefreshToken } from "@/lib/admin-auth";
+import { rest, TABLE } from "@/lib/db";
 import { INTERESTS, STATUSES } from "@/lib/validation";
 import { LoginForm } from "./LoginForm";
 import { logout, updateStatus, deleteRequest } from "./actions";
@@ -18,24 +19,15 @@ function Shell({ children }: { children: React.ReactNode }) {
 }
 
 export default async function Admin({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  if (!adminConfigured() || !dbConfigured()) {
-    return (
-      <Shell>
-        <div className="mx-auto max-w-lg pt-20 text-center">
-          <LogoMark className="mx-auto h-12 w-12" />
-          <h1 className="mt-6 text-2xl font-semibold">Admin disabled</h1>
-          <p className="mt-3 text-muted">The administrative panel stays disabled until ADMIN_PASSWORD (≥16 chars), ADMIN_SESSION_SECRET (≥32 chars), SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are configured on the server.</p>
-        </div>
-      </Shell>
-    );
-  }
-  if (!(await isAuthenticated())) {
+  const session = await getAdminSession();
+  if (!session && (await hasRefreshToken())) redirect("/admin/refresh");
+  if (!session) {
     return (
       <Shell>
         <div className="mx-auto max-w-sm pt-20">
           <LogoMark className="h-10 w-10" />
           <h1 className="mt-6 text-2xl font-semibold tracking-tight">NEUVIA admin</h1>
-          <p className="mt-2 text-sm text-muted">Restricted area. All actions are logged.</p>
+          <p className="mt-2 text-sm text-muted">Restricted area — sign in with your Supabase account. All actions are logged.</p>
           <LoginForm />
         </div>
       </Shell>
@@ -55,15 +47,15 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
     interest && `interest=eq.${interest}`,
     q && `or=(full_name.ilike.*${encodeURIComponent(q)}*,email.ilike.*${encodeURIComponent(q)}*,organization.ilike.*${encodeURIComponent(q)}*)`,
   ].filter(Boolean).join("&");
-  const res = await rest<Row[]>(TABLE, { query: filters });
+  const res = await rest<Row[]>(TABLE, { token: session.token, query: filters });
   const rows = res.data || [];
-  await audit("view", null, { q, status, interest, count: rows.length });
+  await audit(session, "view", null, { q, status, interest, count: rows.length });
   const exportHref = `/admin/export?${new URLSearchParams({ ...(q && { q }), ...(status && { status }), ...(interest && { interest }) })}`;
 
   return (
     <Shell>
       <header className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3"><LogoMark className="h-8 w-8" /><h1 className="text-xl font-semibold tracking-tight">Requests <span className="font-mono text-sm text-muted">({rows.length})</span></h1></div>
+        <div className="flex items-center gap-3"><LogoMark className="h-8 w-8" /><h1 className="text-xl font-semibold tracking-tight">Requests <span className="font-mono text-sm text-muted">({rows.length})</span></h1><span className="hidden text-xs text-muted sm:inline">{session.email}</span></div>
         <div className="flex items-center gap-2">
           <a href={exportHref} className="btn btn-ghost !h-9 !text-sm">Export CSV</a>
           <form action={logout}><button className="btn btn-dark !h-9 !text-sm">Sign out</button></form>
