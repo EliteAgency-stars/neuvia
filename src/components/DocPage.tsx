@@ -48,7 +48,7 @@ export function IntegrationDiagram() {
   );
 }
 
-export function FounderCard({ t }: { t: Dictionary }) {
+export function FounderCard({ t, eyebrow = true }: { t: Dictionary; eyebrow?: boolean }) {
   return (
     <div className="grid items-center gap-8 md:grid-cols-[300px_1fr] md:gap-12">
       <div className="relative mx-auto w-full max-w-[300px]">
@@ -61,8 +61,8 @@ export function FounderCard({ t }: { t: Dictionary }) {
         </div>
       </div>
       <div>
-        <p className="eyebrow">{t.about.founderEyebrow}</p>
-        <h3 className="mt-3 text-3xl font-semibold tracking-tight">{site.founder.name}</h3>
+        {eyebrow && <p className="eyebrow">{t.about.founderEyebrow}</p>}
+        <h3 className={`${eyebrow ? "mt-3 " : ""}text-3xl font-semibold tracking-tight`}>{site.founder.name}</h3>
         <p className="mt-4 text-[1.0625rem] leading-relaxed text-ink/80">{t.about.founderBody}</p>
         <ul className="mt-6 flex flex-wrap gap-2 text-sm">
           <li><a href={`mailto:${site.contact.email}`} className="inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-2 ring-1 ring-line hover:ring-ink"><Mail className="h-4 w-4" aria-hidden />{site.contact.email}</a></li>
@@ -164,7 +164,7 @@ function BlockView({ b, t }: { b: Block; t: Dictionary }) {
     case "widget":
       if (b.name === "ncri") return <NcriRadar />;
       if (b.name === "integration") return <IntegrationDiagram />;
-      if (b.name === "founder") return <FounderCard t={t} />;
+      if (b.name === "founder") return <FounderCard t={t} eyebrow={false} />;
       return null;
   }
 }
