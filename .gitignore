@@ -9,3 +9,7 @@ next-env.d.ts
 .env.*.local
 .vercel
 .DS_Store
+
+# video build artifacts
+video/build/
+video/*.mp4
